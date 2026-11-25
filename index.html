@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0f0f12">
+  <title>테헤란로 1% 조형물 도감 AR — Percent-for-Art Audit</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-[#0f0f12] text-zinc-100 h-[100dvh] w-screen overflow-hidden flex flex-col select-none">
+
+  <!-- Top Header -->
+  <header class="relative z-40 px-3 sm:px-5 py-3 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800 flex items-center justify-between gap-2 shrink-0">
+    <div class="flex items-center gap-2.5 min-w-0">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-rose-500 text-zinc-950 flex items-center justify-center font-black text-base shadow-md shrink-0">
+        1%
+      </div>
+      <div class="min-w-0 leading-tight">
+        <h1 class="text-xs sm:text-sm font-extrabold text-zinc-100 truncate">테헤란로 1% 조형물 도감</h1>
+        <p id="headerBudgetSummary" class="text-[10px] text-amber-300/90 font-medium truncate">총 추정 설치비 48.8억 원 · 10개 작품</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-1.5 shrink-0">
+      <button id="btnModeMap" type="button" class="px-2.5 py-1.5 rounded-xl bg-amber-400 text-zinc-950 text-xs font-extrabold flex items-center gap-1 transition">
+        <i data-lucide="map" class="w-3.5 h-3.5"></i>
+        <span>지도</span>
+      </button>
+      <button id="btnModeAR" type="button" class="px-2.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 text-xs font-bold flex items-center gap-1 transition">
+        <i data-lucide="scan-eye" class="w-3.5 h-3.5 text-amber-400"></i>
+        <span>AR 캡션</span>
+      </button>
+      <button id="btnOpenReport" type="button" class="px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-700 text-xs font-bold flex items-center gap-1 transition" title="도감 및 감사 리포트">
+        <i data-lucide="award" class="w-3.5 h-3.5 text-amber-400"></i>
+        <span id="dexBadge">0/10</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= VIEW 1: MAP + ARTWORK DECK ================= -->
+  <main id="mapView" class="relative flex-1 flex flex-col lg:flex-row overflow-hidden">
+    <!-- Leaflet Map -->
+    <div id="artMap" class="flex-1 w-full h-full z-10"></div>
+
+    <!-- Bottom / Side Artwork Carousel & Detail Deck -->
+    <aside class="z-20 bg-zinc-950/95 border-t lg:border-t-0 lg:border-l border-zinc-800 lg:w-96 flex flex-col max-h-[46dvh] lg:max-h-full">
+      <div class="px-4 py-2.5 border-b border-zinc-800/80 flex items-center justify-between text-[11px]">
+        <span class="font-bold text-zinc-300">🏛️ 테헤란로 건축물 미술작품 목록</span>
+        <span class="text-zinc-500">탭하여 AR 캡션 / 3초 감사</span>
+      </div>
+      <div id="artListContainer" class="overflow-y-auto flex-1 p-3 space-y-2.5">
+        <!-- Dynamic artwork cards -->
+      </div>
+    </aside>
+  </main>
+
+  <!-- ================= VIEW 2: CAMERA AR CAPTION & GHOST HOLOGRAM ================= -->
+  <section id="arView" class="hidden relative flex-1 w-full h-full overflow-hidden bg-zinc-950">
+    <!-- Live Rear Camera Feed -->
+    <video id="arCameraVideo" autoplay playsinline muted class="hidden absolute inset-0 w-full h-full object-cover z-0"></video>
+
+    <!-- Fallback / Indoor Simulated Teheran-ro Skyline Backdrop -->
+    <div id="arSimBackdrop" class="absolute inset-0 z-0 bg-gradient-to-b from-slate-900 via-zinc-900 to-stone-950 flex flex-col items-center justify-end overflow-hidden">
+      <div class="absolute inset-0 opacity-20" style="background-image: radial-gradient(circle at 50% 30%, #fbbf24 0%, transparent 55%);"></div>
+      <div class="w-full h-1/3 bg-gradient-to-t from-black/80 to-transparent"></div>
+    </div>
+
+    <!-- AR HUD Top Strip -->
+    <div class="relative z-20 px-4 pt-3 flex items-center justify-between gap-2">
+      <div class="px-3 py-1.5 rounded-full bg-black/65 backdrop-blur-md border border-amber-400/40 text-[11px] font-mono text-amber-300 flex items-center gap-2">
+        <span id="arStatusLabel">AR 시뮬레이션 (좌우 스와이프)</span>
+      </div>
+      <button id="btnStartLiveCamera" type="button" class="px-3 py-1.5 rounded-full bg-amber-400 hover:bg-amber-300 text-zinc-950 text-[11px] font-extrabold shadow-lg transition">
+        📷 실물 카메라 켜기
+      </button>
+    </div>
+
+    <!-- Floating 3D Gallery Caption & Ghost Hologram Stage -->
+    <div id="arStage" class="relative z-10 flex-1 h-[calc(100%-130px)] flex flex-col items-center justify-center px-5">
+      <!-- Ghost Pedestal Hologram (Shown when artwork is audited as 'ghost' / missing!) -->
+      <div id="ghostHologram" class="hidden mb-4 flex flex-col items-center">
+        <div class="ghost-cube-wrapper">
+          <div class="ghost-cube">
+            <div class="face front">👻</div>
+            <div class="face back">?</div>
+            <div class="face right">1%</div>
+            <div class="face left">?</div>
+            <div class="face top"></div>
+            <div class="face bottom"></div>
+          </div>
+        </div>
+        <span class="mt-3 px-2.5 py-0.5 rounded-full bg-rose-500/20 border border-rose-400/50 text-rose-300 text-[10px] font-bold animate-pulse">
+          ⚠️ 유령 조형물 감지 — 원래 이 자리에 있어야 할 작품입니다
+        </span>
+      </div>
+
+      <!-- Floating Museum Caption Plaque -->
+      <div id="arCaptionCard" class="w-full max-w-sm bg-zinc-950/85 backdrop-blur-xl border border-amber-400/50 rounded-3xl p-5 shadow-2xl space-y-3 transition-all">
+        <div class="flex items-center justify-between gap-2">
+          <span id="arBuildingBadge" class="px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[11px] font-bold border border-amber-400/30">포스코센터</span>
+          <span id="arDistanceBadge" class="text-[11px] font-mono text-zinc-400">거리 ~25m</span>
+        </div>
+
+        <div>
+          <h2 id="arTitle" class="text-lg font-black text-white leading-snug">아마벨 (Amabel)</h2>
+          <p id="arArtistYear" class="text-xs text-zinc-300 mt-0.5">프랭크 스텔라 (Frank Stella) · 1997년</p>
+        </div>
+
+        <!-- Budget Highlight Box -->
+        <div class="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-2">
+          <div>
+            <div class="text-[10px] text-amber-300/80 font-bold uppercase">설치 예산 (1% 의무 조형물)</div>
+            <div id="arBudgetText" class="text-base font-black text-amber-300">약 19억 원 (공시)</div>
+          </div>
+          <span id="arBudgetType" class="text-[10px] px-2 py-0.5 rounded-md bg-zinc-900 text-zinc-300 border border-zinc-700">실제 공시</span>
+        </div>
+
+        <p id="arDesc" class="text-xs text-zinc-300 leading-relaxed">
+          스테인리스 스틸과 유리 소재의 높이 9m, 무게 30t 대형 조형물.
+        </p>
+
+        <div class="flex items-center gap-2 pt-1">
+          <button id="btnArPrev" type="button" class="px-3 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold">←</button>
+          <button id="btnArOpenAudit" type="button" class="flex-1 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-zinc-950 text-xs font-extrabold shadow-md transition">
+            🔍 3초 현장 상태 감사하기
+          </button>
+          <button id="btnArNext" type="button" class="px-3 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold">→</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 3-SECOND ARTWORK AUDIT MODAL ================= -->
+  <div id="artAuditModal" class="hidden fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-zinc-900 border-t sm:border border-amber-400/40 rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 space-y-4 shadow-2xl">
+      <div class="flex items-start justify-between gap-2">
+        <div>
+          <span id="auditModalBuilding" class="text-[11px] font-bold text-amber-400">포스코센터</span>
+          <h3 id="auditModalTitle" class="text-base font-extrabold text-white">아마벨 (Amabel)</h3>
+          <p id="auditModalBudget" class="text-xs text-zinc-400 mt-0.5">설치 예산: 약 19억 원</p>
+        </div>
+        <button id="btnCloseArtAudit" class="p-1.5 rounded-xl bg-zinc-800 text-zinc-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="space-y-2">
+        <div class="text-xs font-bold text-zinc-300">현장에서 확인한 조형물 상태는 어떤가요?</div>
+        <div class="grid grid-cols-3 gap-2">
+          <button type="button" class="art-status-btn p-3 rounded-2xl bg-zinc-800 border border-zinc-700 text-center space-y-1 transition" data-status="good">
+            <div class="text-2xl">✨</div>
+            <div class="text-[11px] font-bold text-emerald-300">잘 관리됨</div>
+          </button>
+          <button type="button" class="art-status-btn p-3 rounded-2xl bg-zinc-800 border border-zinc-700 text-center space-y-1 transition" data-status="neglected">
+            <div class="text-2xl">🕸️</div>
+            <div class="text-[11px] font-bold text-amber-300">훼손·방치</div>
+          </button>
+          <button type="button" class="art-status-btn p-3 rounded-2xl bg-zinc-800 border border-zinc-700 text-center space-y-1 transition" data-status="ghost">
+            <div class="text-2xl">👻</div>
+            <div class="text-[11px] font-bold text-rose-300">사라짐(유령)</div>
+          </button>
+        </div>
+      </div>
+
+      <input id="auditMemoInput" type="text" placeholder="한 줄 현장 메모 (선택: 예) 쓰레기 적치, 안내판 훼손 등)" class="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-700 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-400">
+
+      <button id="btnSaveArtAudit" type="button" class="w-full py-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-zinc-950 font-extrabold text-sm shadow-lg transition">
+        🏆 도감 등록 & 감사 기록 저장
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= REPORT / DEX MODAL ================= -->
+  <div id="reportModal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-zinc-900 border border-zinc-700 rounded-3xl w-full max-w-md p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+        <div>
+          <h3 class="text-base font-extrabold text-amber-300">🏛️ 공공미술 시민 감사 리포트</h3>
+          <p class="text-[11px] text-zinc-400">테헤란로 1% 의무 조형물 관리 실태 요약</p>
+        </div>
+        <button id="btnCloseReport" class="p-1.5 rounded-xl bg-zinc-800 text-zinc-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2 text-center">
+        <div class="p-3 rounded-xl bg-zinc-950 border border-zinc-800">
+          <div class="text-[10px] text-zinc-400">수집 도감</div>
+          <div id="repCount" class="text-lg font-black text-amber-400">0/10</div>
+        </div>
+        <div class="p-3 rounded-xl bg-zinc-950 border border-zinc-800">
+          <div class="text-[10px] text-zinc-400">훼손·방치</div>
+          <div id="repNeglected" class="text-lg font-black text-orange-400">0</div>
+        </div>
+        <div class="p-3 rounded-xl bg-zinc-950 border border-zinc-800">
+          <div class="text-[10px] text-zinc-400">유령(철거)</div>
+          <div id="repGhost" class="text-lg font-black text-rose-400">0</div>
+        </div>
+      </div>
+
+      <div class="text-[11px] text-zinc-400 bg-zinc-950/70 p-3 rounded-xl border border-zinc-800 leading-relaxed">
+        ※ 「문화예술진흥법」 제9조에 따라 연면적 1만㎡ 이상 대형 건축물은 건축비의 0.1~0.7%를 미술작품 설치에 의무 사용합니다. 공시 금액이 공개되지 않은 작품은 법정 표준건축비 산식 기반 추정치로 표시했습니다.
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="btnExportArtCsv" type="button" class="flex-1 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-zinc-950 text-xs font-extrabold flex items-center justify-center gap-1.5 transition">
+          <i data-lucide="download" class="w-4 h-4"></i>
+          <span>감사 리포트 CSV 내보내기</span>
+        </button>
+        <button id="btnResetArtAudits" type="button" class="px-3.5 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-rose-400 text-xs font-bold transition">
+          초기화
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="data/teheran_art.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+html, body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+.leaflet-container {
+  background: #141418;
+}
+.art-status-btn.selected {
+  border-color: #fbbf24;
+  background-color: rgba(251, 191, 36, 0.18);
+}
+
+/* 3D Hologram Ghost Cube for Missing/Removed Public Art */
+.ghost-cube-wrapper {
+  perspective: 500px;
+  width: 76px;
+  height: 76px;
+}
+.ghost-cube {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  animation: spinGhost 7s infinite linear;
+}
+.ghost-cube .face {
+  position: absolute;
+  width: 76px;
+  height: 76px;
+  border: 1.5px dashed rgba(251, 113, 133, 0.85);
+  background: rgba(244, 63, 94, 0.16);
+  box-shadow: inset 0 0 18px rgba(244, 63, 94, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 900;
+  color: #fda4af;
+}
+.face.front  { transform: translateZ(38px); }
+.face.back   { transform: rotateY(180deg) translateZ(38px); }
+.face.right  { transform: rotateY(90deg) translateZ(38px); }
+.face.left   { transform: rotateY(-90deg) translateZ(38px); }
+.face.top    { transform: rotateX(90deg) translateZ(38px); }
+.face.bottom { transform: rotateX(-90deg) translateZ(38px); }
+
+@keyframes spinGhost {
+  from { transform: rotateX(-16deg) rotateY(0deg); }
+  to   { transform: rotateX(-16deg) rotateY(360deg); }
+}
