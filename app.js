@@ -21,11 +21,12 @@
   const totalBudget = artworks.reduce((acc, a) => acc + (a.budgetKRW || 0), 0).toFixed(1);
   headerBudgetSummary.textContent = `총 추정 설치비 ${totalBudget}억 원 · ${artworks.length}개 작품`;
 
-  // ================= LEAFLET MAP =================
+  // ================= LEAFLET MAP (100% API-Key-Free OpenStreetMap + Dark Filter) =================
   const map = L.map('artMap', { zoomControl: false }).setView([37.5042, 127.0465], 14);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap &copy; CARTO',
-    maxZoom: 19
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 19,
+    className: 'dark-gallery-tiles'
   }).addTo(map);
 
   const markers = {};
